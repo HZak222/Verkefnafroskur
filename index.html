@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F2B28">
+<title>Froskurinn — Verkefnalisti</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-row">
+      <button class="icon-btn" id="btn-back" aria-label="Til baka" hidden>
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="brand">
+        <svg class="frog-logo" viewBox="0 0 100 100" aria-hidden="true">
+          <circle cx="50" cy="58" r="30" fill="var(--frog-green)"/>
+          <circle cx="31" cy="34" r="13" fill="var(--frog-green)"/>
+          <circle cx="69" cy="34" r="13" fill="var(--frog-green)"/>
+          <circle cx="31" cy="34" r="5" fill="var(--pond)"/>
+          <circle cx="69" cy="34" r="5" fill="var(--pond)"/>
+          <path d="M36 60 Q50 72 64 60" fill="none" stroke="var(--pond)" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <div class="brand-title">Froskurinn</div>
+          <div class="tier-line"><span id="tier-badge">🐸 Halakvísill</span> · <span id="streak-line">0 daga runa</span></div>
+        </div>
+      </div>
+      <button class="icon-btn" id="btn-settings" aria-label="Uppsetning">
+        <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 13a7.97 7.97 0 000-2l2-1.5-2-3.4-2.3.9a8 8 0 00-1.7-1L15 3.6h-4L10.6 6a8 8 0 00-1.7 1l-2.3-.9-2 3.4L6.6 11a7.97 7.97 0 000 2l-2 1.5 2 3.4 2.3-.9a8 8 0 001.7 1l.4 2.4h4l.4-2.4a8 8 0 001.7-1l2.3.9 2-3.4-2-1.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <p class="frog-quip" id="frog-quip">Einn kubbur í einu, kappi.</p>
+  </header>
+
+  <!-- MAIN VIEWS -->
+  <main id="views">
+
+    <!-- HOME: priority grid -->
+    <section class="view" id="view-home">
+      <div class="priority-grid" id="priority-grid"><!-- injected --></div>
+      <div class="idea-strip" id="ideas-row"><!-- quick ideas ticker, injected --></div>
+    </section>
+
+    <!-- TASK LIST for a chosen priority -->
+    <section class="view" id="view-list" hidden>
+      <h2 class="list-title" id="list-title">Verkefni</h2>
+      <div class="task-list" id="task-list"><!-- injected --></div>
+      <div class="empty-state" id="list-empty" hidden>
+        <div class="empty-frog">🐸</div>
+        <p>Ekkert hér — froskurinn er ánægður. Búðu til verkefni með + hnappnum.</p>
+      </div>
+    </section>
+
+    <!-- NEW TASK FORM -->
+    <section class="view" id="view-new" hidden>
+      <h2 class="list-title">Nýtt verkefni</h2>
+      <form id="task-form" class="task-form">
+        <label>
+          Hvað þarf að gera?
+          <input type="text" id="f-title" placeholder="t.d. Senda tilboð á Jón" required maxlength="120">
+        </label>
+
+        <div class="field-block">
+          <span class="field-label">Forgangur</span>
+          <div class="priority-picker" id="priority-picker"><!-- injected --></div>
+        </div>
+
+        <label>
+          Hver á að gera þetta?
+          <select id="f-assignee"></select>
+        </label>
+
+        <div class="row-2">
+          <label>
+            Áætlaðar klst.
+            <input type="number" id="f-hours" min="0" step="0.5" placeholder="1">
+          </label>
+          <label>
+            Deadline
+            <input type="date" id="f-deadline">
+          </label>
+        </div>
+
+        <button type="submit" class="btn-primary btn-big">Skrá verkefni 🐸</button>
+      </form>
+    </section>
+
+    <!-- STATS / ARCHIVE -->
+    <section class="view" id="view-stats" hidden>
+      <h2 class="list-title">Tölfræði</h2>
+      <div class="stats-grid" id="stats-grid"><!-- injected --></div>
+      <h3 class="archive-heading">Kláruð verkefni</h3>
+      <div class="task-list" id="archive-list"><!-- injected --></div>
+      <div class="empty-state" id="archive-empty" hidden>
+        <div class="empty-frog">🪷</div>
+        <p>Ekkert klárað enn — fyrsta stökkið er alltaf það stærsta.</p>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings" hidden>
+      <h2 class="list-title">Uppsetning</h2>
+
+      <div class="settings-block">
+        <h3>Firebase tenging</h3>
+        <p class="settings-hint">Settu inn þína Firebase stillingu í <code>app.js</code> (efst í skjalinu) svo gögnin vistist og samstillist milli tækja. Þangað til er allt vistað í tækinu sjálfu (local).</p>
+        <div class="firebase-status" id="firebase-status">Staða: ekki tengt — keyrir á staðbundinni geymslu</div>
+      </div>
+
+      <div class="settings-block">
+        <h3>Notendur / skammstafanir</h3>
+        <div id="user-list" class="user-list"><!-- injected --></div>
+        <form id="user-form" class="inline-form">
+          <input type="text" id="u-name" placeholder="Nafn (t.d. Jón Bjartur)" required>
+          <input type="text" id="u-code" placeholder="Kóði (t.d. JBA)" maxlength="6" required>
+          <button type="submit" class="btn-secondary">Bæta við</button>
+        </form>
+      </div>
+
+      <div class="settings-block">
+        <h3>Gögn</h3>
+        <button class="btn-secondary" id="btn-export">Sækja afrit (JSON)</button>
+        <button class="btn-danger" id="btn-reset">Hreinsa allt</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-view="home">
+      <svg viewBox="0 0 24 24"><path d="M4 11.5L12 4l8 7.5M6 10v9h12v-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Verkefni</span>
+    </button>
+    <button class="nav-btn nav-fab" data-view="new">
+      <span class="fab-plus">+</span>
+    </button>
+    <button class="nav-btn" data-view="stats">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <span>Tölfræði</span>
+    </button>
+  </nav>
+
+</div>
+
+<div id="confetti-layer" aria-hidden="true"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
