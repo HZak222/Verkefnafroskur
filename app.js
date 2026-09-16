@@ -13,6 +13,7 @@ const firebaseConfig = {
   projectId: "verkefnalisti-frosks",
 };
 
+
 /* ===================================================================== */
 
 const PRIORITIES = [
@@ -23,7 +24,7 @@ const PRIORITIES = [
 ];
 
 const TIERS = [
-  { min: 0, name: "Halakarta", emoji: "🐣" },
+  { min: 0, name: "Halakvísill", emoji: "🐣" },
   { min: 5, name: "Ungfroskur", emoji: "🐸" },
   { min: 15, name: "Froskur", emoji: "🐸" },
   { min: 30, name: "Risafroskur", emoji: "🐸" },
@@ -190,7 +191,14 @@ function renderHome() {
   });
 
   // Fagnaðarmynd þegar engin verkefni eru eftir
-  $("#celebration").hidden = state.tasks.length !== 0;
+  const celebrationEl = $("#celebration");
+  const noTasksLeft = state.tasks.length === 0;
+  celebrationEl.hidden = !noTasksLeft;
+  const celebrationVideo = celebrationEl.querySelector("video");
+  if (celebrationVideo) {
+    if (noTasksLeft) celebrationVideo.play().catch(() => {});
+    else celebrationVideo.pause();
+  }
 
   // Verkefni með deadline í dag eða liðinn, óháð forgangi
   const dueAlert = $("#due-alert");

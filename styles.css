@@ -171,6 +171,7 @@ main#views {
   border-radius: var(--radius-md);
   display: block;
   margin: 0 auto 10px;
+  object-fit: cover;
 }
 .celebration p {
   font-family: "Baloo 2", sans-serif;
