@@ -150,13 +150,34 @@ main#views {
 .priority-block.p-lagt      { background: var(--p-green); color: var(--p-green-ink); }
 .priority-block.p-langtimi  { background: var(--p-blue); color: var(--p-blue-ink); }
 
-.idea-strip {
-  margin-top: 16px;
+.due-alert {
+  margin-top: 6px;
+  margin-bottom: 14px;
   padding: 14px;
   border-radius: var(--radius-md);
   background: var(--surface);
+  border: 2px solid var(--p-red);
 }
-.idea-strip h4 { margin: 0 0 8px; font-size: 13px; color: var(--dim); font-weight: 400; }
+.due-alert h4 { margin: 0 0 10px; font-size: 13px; color: var(--p-red); font-weight: 700; }
+.due-alert .task-list { gap: 8px; }
+
+.celebration {
+  text-align: center;
+  padding: 18px 10px 22px;
+}
+.celebration-gif {
+  width: 160px;
+  max-width: 60vw;
+  border-radius: var(--radius-md);
+  display: block;
+  margin: 0 auto 10px;
+}
+.celebration p {
+  font-family: "Baloo 2", sans-serif;
+  font-weight: 700;
+  color: var(--frog-green);
+  font-size: 15px;
+}
 
 /* ---------- TASK LIST ---------- */
 .list-title { font-size: 20px; margin: 4px 0 14px; }
@@ -198,6 +219,10 @@ main#views {
 .task-del {
   background: none; border: none; color: var(--dim); font-size: 18px; padding: 4px 6px;
 }
+.task-edit {
+  background: none; border: none; color: var(--dim); font-size: 15px; padding: 4px 6px;
+}
+.task-edit:active, .task-del:active { color: var(--frog-green); }
 
 .empty-state { text-align: center; margin-top: 30px; color: var(--dim); }
 .empty-frog { font-size: 46px; margin-bottom: 8px; }

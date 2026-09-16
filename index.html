@@ -49,8 +49,15 @@
 
     <!-- HOME: priority grid -->
     <section class="view" id="view-home">
+      <div class="celebration" id="celebration" hidden>
+        <img src="dansfroskur.gif" alt="Dansandi froskur" class="celebration-gif">
+        <p>Allt búið! Froskurinn fagnar. 🎉</p>
+      </div>
+      <div class="due-alert" id="due-alert" hidden>
+        <h4>Deadline í dag eða liðinn</h4>
+        <div class="task-list" id="due-list"><!-- injected --></div>
+      </div>
       <div class="priority-grid" id="priority-grid"><!-- injected --></div>
-      <div class="idea-strip" id="ideas-row"><!-- quick ideas ticker, injected --></div>
     </section>
 
     <!-- TASK LIST for a chosen priority -->
@@ -63,9 +70,9 @@
       </div>
     </section>
 
-    <!-- NEW TASK FORM -->
+    <!-- NEW / EDIT TASK FORM -->
     <section class="view" id="view-new" hidden>
-      <h2 class="list-title">Nýtt verkefni</h2>
+      <h2 class="list-title" id="new-form-title">Nýtt verkefni</h2>
       <form id="task-form" class="task-form">
         <label>
           Hvað þarf að gera?
@@ -93,7 +100,8 @@
           </label>
         </div>
 
-        <button type="submit" class="btn-primary btn-big">Skrá verkefni 🐸</button>
+        <button type="submit" class="btn-primary btn-big" id="new-form-submit">Skrá verkefni 🐸</button>
+        <button type="button" class="btn-secondary" id="new-form-cancel" hidden>Hætta við breytingu</button>
       </form>
     </section>
 

@@ -189,14 +189,18 @@ function renderHome() {
     grid.appendChild(btn);
   });
 
-  const ideaWrap = $("#ideas-row");
-  const ideas = state.tasks.filter((t) => t.priority === "langtimi").slice(0, 3);
-  if (ideas.length === 0) {
-    ideaWrap.innerHTML = "";
-    return;
-  }
-  ideaWrap.innerHTML = `<h4>Nýjustu hugmyndir</h4>` +
-    ideas.map((t) => `<div class="task-title" style="margin-bottom:6px;">💡 ${escapeHtml(t.title)}</div>`).join("");
+  // Fagnaðarmynd þegar engin verkefni eru eftir
+  $("#celebration").hidden = state.tasks.length !== 0;
+
+  // Verkefni með deadline í dag eða liðinn, óháð forgangi
+  const dueAlert = $("#due-alert");
+  const dueList = $("#due-list");
+  const dueTasks = state.tasks
+    .filter((t) => t.deadline && daysUntil(t.deadline) <= 0)
+    .sort((a, b) => a.deadline.localeCompare(b.deadline));
+  dueList.innerHTML = "";
+  dueTasks.forEach((t) => dueList.appendChild(makeTaskCardEl(t)));
+  dueAlert.hidden = dueTasks.length === 0;
 }
 
 function priorityMeta(key) {
@@ -226,34 +230,37 @@ function renderTaskList() {
     .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999"));
   list.innerHTML = "";
   $("#list-empty").hidden = tasks.length > 0;
+  tasks.forEach((t) => list.appendChild(makeTaskCardEl(t)));
+}
 
-  tasks.forEach((t) => {
-    const card = document.createElement("div");
-    card.className = `task-card pri-${t.priority}`;
-    const du = daysUntil(t.deadline);
-    let dueChip = "";
-    if (t.deadline) {
-      const label = du < 0 ? `${Math.abs(du)}d sein` : du === 0 ? "í dag" : `${du}d eftir`;
-      dueChip = `<span class="chip ${du !== null && du <= 0 ? "due-soon" : ""}">${label}</span>`;
-    }
-    card.innerHTML = `
-      <button class="task-check" aria-label="Klára verkefni">
-        <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <div class="task-main">
-        <div class="task-title">${escapeHtml(t.title)}</div>
-        <div class="task-meta">
-          ${t.assignee ? `<span class="chip">${escapeHtml(t.assignee)}</span>` : ""}
-          ${t.hours ? `<span class="chip">${t.hours} klst</span>` : ""}
-          ${dueChip}
-        </div>
+function makeTaskCardEl(t) {
+  const card = document.createElement("div");
+  card.className = `task-card pri-${t.priority}`;
+  const du = daysUntil(t.deadline);
+  let dueChip = "";
+  if (t.deadline) {
+    const label = du < 0 ? `${Math.abs(du)}d sein` : du === 0 ? "í dag" : `${du}d eftir`;
+    dueChip = `<span class="chip ${du !== null && du <= 0 ? "due-soon" : ""}">${label}</span>`;
+  }
+  card.innerHTML = `
+    <button class="task-check" aria-label="Klára verkefni">
+      <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="task-main">
+      <div class="task-title">${escapeHtml(t.title)}</div>
+      <div class="task-meta">
+        ${t.assignee ? `<span class="chip">${escapeHtml(t.assignee)}</span>` : ""}
+        ${t.hours ? `<span class="chip">${t.hours} klst</span>` : ""}
+        ${dueChip}
       </div>
-      <button class="task-del" aria-label="Eyða">✕</button>
-    `;
-    card.querySelector(".task-check").addEventListener("click", () => completeTask(t.id));
-    card.querySelector(".task-del").addEventListener("click", () => deleteTask(t.id));
-    list.appendChild(card);
-  });
+    </div>
+    <button class="task-edit" aria-label="Breyta verkefni">✎</button>
+    <button class="task-del" aria-label="Eyða">✕</button>
+  `;
+  card.querySelector(".task-check").addEventListener("click", () => completeTask(t.id));
+  card.querySelector(".task-edit").addEventListener("click", () => openEditTask(t));
+  card.querySelector(".task-del").addEventListener("click", () => deleteTask(t.id));
+  return card;
 }
 
 function escapeHtml(s) {
@@ -312,8 +319,9 @@ function deleteArchived(id) {
   renderStats();
 }
 
-/* ---------------------- New task form ---------------------- */
+/* ---------------------- New / edit task form ---------------------- */
 let selectedPriority = "mikilvaegt";
+let editingTaskId = null;
 
 function renderPriorityPicker() {
   const wrap = $("#priority-picker");
@@ -341,21 +349,71 @@ function renderAssigneeOptions() {
   }
 }
 
+function openEditTask(t) {
+  editingTaskId = t.id;
+  selectedPriority = t.priority;
+  renderAssigneeOptions();
+  $("#f-title").value = t.title;
+  $("#f-assignee").value = t.assignee || "";
+  $("#f-hours").value = t.hours != null ? t.hours : "";
+  $("#f-deadline").value = t.deadline || "";
+  renderPriorityPicker();
+  $("#new-form-title").textContent = "Breyta verkefni";
+  $("#new-form-submit").textContent = "Vista breytingar";
+  $("#new-form-cancel").hidden = false;
+  switchView("new");
+}
+
+function exitEditMode() {
+  editingTaskId = null;
+  $("#new-form-title").textContent = "Nýtt verkefni";
+  $("#new-form-submit").textContent = "Skrá verkefni 🐸";
+  $("#new-form-cancel").hidden = true;
+  $("#task-form").reset();
+  selectedPriority = "mikilvaegt";
+}
+
+$("#new-form-cancel").addEventListener("click", () => {
+  exitEditMode();
+  switchView("home");
+});
+
 $("#task-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const title = $("#f-title").value.trim();
   if (!title) return;
+  const assignee = $("#f-assignee").value;
+  const hours = $("#f-hours").value ? Number($("#f-hours").value) : null;
+  const deadline = $("#f-deadline").value || null;
+  if (assignee) state.meta.lastAssignee = assignee;
+
+  if (editingTaskId) {
+    const t = state.tasks.find((x) => x.id === editingTaskId);
+    if (t) {
+      t.title = title;
+      t.priority = selectedPriority;
+      t.assignee = assignee;
+      t.hours = hours;
+      t.deadline = deadline;
+    }
+    persist();
+    exitEditMode();
+    renderHome();
+    showToast("Verkefni uppfært");
+    switchView("home");
+    return;
+  }
+
   const task = {
     id: uid(),
     title,
     priority: selectedPriority,
-    assignee: $("#f-assignee").value,
-    hours: $("#f-hours").value ? Number($("#f-hours").value) : null,
-    deadline: $("#f-deadline").value || null,
+    assignee,
+    hours,
+    deadline,
     createdAt: new Date().toISOString(),
   };
   state.tasks.unshift(task);
-  if (task.assignee) state.meta.lastAssignee = task.assignee;
   persist();
   e.target.reset();
   selectedPriority = "mikilvaegt";
@@ -465,12 +523,13 @@ $("#btn-reset").addEventListener("click", () => {
 
 /* ---------------------- Nav / view switching ---------------------- */
 function switchView(name) {
+  if (name !== "new" && editingTaskId) exitEditMode();
   ["home", "list", "new", "stats", "settings"].forEach((v) => {
     $(`#view-${v}`).hidden = v !== name;
   });
   $all(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === name));
   $("#btn-back").hidden = name !== "list";
-  if (name === "new") { renderPriorityPicker(); renderAssigneeOptions(); }
+  if (name === "new" && !editingTaskId) { renderPriorityPicker(); renderAssigneeOptions(); }
   if (name === "stats") renderStats();
   if (name === "settings") renderUsers();
   window.scrollTo(0, 0);
