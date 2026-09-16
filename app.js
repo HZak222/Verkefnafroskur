@@ -23,7 +23,7 @@ const PRIORITIES = [
 ];
 
 const TIERS = [
-  { min: 0, name: "Halakvísill", emoji: "🐣" },
+  { min: 0, name: "Halakarta", emoji: "🐣" },
   { min: 5, name: "Ungfroskur", emoji: "🐸" },
   { min: 15, name: "Froskur", emoji: "🐸" },
   { min: 30, name: "Risafroskur", emoji: "🐸" },
@@ -57,7 +57,7 @@ function defaultState() {
       { name: "Bjartmar", code: "BA" },
       { name: "Froskur", code: "AMJ" },
     ],
-    meta: { streak: 0, bestStreak: 0, lastCompletedDate: null, totalCompleted: 0 },
+    meta: { streak: 0, bestStreak: 0, lastCompletedDate: null, totalCompleted: 0, lastAssignee: "" },
   };
 }
 
@@ -335,6 +335,10 @@ function renderAssigneeOptions() {
   const sel = $("#f-assignee");
   sel.innerHTML = `<option value="">— ekki valið —</option>` +
     state.users.map((u) => `<option value="${escapeHtml(u.name)}">${escapeHtml(u.name)} (${escapeHtml(u.code)})</option>`).join("");
+  // Sjálfgefið á síðasta notanda sem var valinn, til að flýta fyrir næstu skráningu
+  if (state.meta.lastAssignee && state.users.some((u) => u.name === state.meta.lastAssignee)) {
+    sel.value = state.meta.lastAssignee;
+  }
 }
 
 $("#task-form").addEventListener("submit", (e) => {
@@ -351,6 +355,7 @@ $("#task-form").addEventListener("submit", (e) => {
     createdAt: new Date().toISOString(),
   };
   state.tasks.unshift(task);
+  if (task.assignee) state.meta.lastAssignee = task.assignee;
   persist();
   e.target.reset();
   selectedPriority = "mikilvaegt";
@@ -415,9 +420,11 @@ function renderUsers() {
   state.users.forEach((u, i) => {
     const row = document.createElement("div");
     row.className = "user-row";
-    row.innerHTML = `<span>${escapeHtml(u.name)} <span class="u-code">${escapeHtml(u.code)}</span></span><button aria-label="Fjarlægja">✕</button>`;
+    row.innerHTML = `<span>${escapeHtml(u.name)} <span class="u-code">${escapeHtml(u.code)}</span></span><button class="user-del" aria-label="Fjarlægja ${escapeHtml(u.name)}">✕</button>`;
     row.querySelector("button").addEventListener("click", () => {
+      if (!confirm(`Fjarlægja ${u.name} (${u.code}) úr notendalistanum?`)) return;
       state.users.splice(i, 1);
+      if (state.meta.lastAssignee === u.name) state.meta.lastAssignee = "";
       persist();
       renderUsers();
       renderAssigneeOptions();
