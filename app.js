@@ -7,10 +7,10 @@
    geymslu (localStorage) í þessu tæki — virkar fínt eitt og sér.
 ===================================================================== */
 const firebaseConfig = {
-  apiKey: "REPLACE_ME",
-  authDomain: "REPLACE_ME.firebaseapp.com",
-  databaseURL: "https://REPLACE_ME.firebaseio.com",
-  projectId: "REPLACE_ME",
+  apiKey: "https://verkefnalisti-frosks-default-rtdb.europe-west1.firebasedatabase.app/",
+  authDomain: "https://verkefnalisti-frosks-default-rtdb.europe-west1.firebasedatabase.app/.firebaseapp.com",
+  databaseURL: "https://https://verkefnalisti-frosks-default-rtdb.europe-west1.firebasedatabase.app/.firebaseio.com",
+  projectId: "https://verkefnalisti-frosks-default-rtdb.europe-west1.firebasedatabase.app/",
 };
 
 /* ===================================================================== */
