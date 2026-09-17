@@ -1,4 +1,4 @@
-const CACHE_NAME = "froskurinn-v1";
+const CACHE_NAME = "froskurinn-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
