@@ -134,6 +134,7 @@ main#views {
   font-size: 40px;
   font-weight: 800;
   line-height: 1;
+  font-variant-emoji: text;
 }
 .priority-block .p-title {
   font-size: 17px;
