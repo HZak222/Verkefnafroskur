@@ -42,7 +42,24 @@
       </button>
     </div>
     <p class="frog-quip" id="frog-quip">Einn kubbur í einu, kappi.</p>
+    <div class="user-chip-row" id="user-chip-row">
+      <button class="user-chip" id="user-chip-btn">👤 <span id="user-chip-name">Velja notanda</span></button>
+      <label class="viewall-switch" id="viewall-switch" hidden>
+        <input type="checkbox" id="viewall-checkbox">
+        <span>Sýna öll verkefni</span>
+      </label>
+    </div>
   </header>
+
+  <!-- USER PICKER (fullscreen) -->
+  <div class="user-picker-overlay" id="user-picker" hidden>
+    <div class="user-picker-card">
+      <h2>Hver ert þú?</h2>
+      <p class="user-picker-hint">Veldu þig svo appið sýni þín verkefni.</p>
+      <div class="user-picker-list" id="user-picker-list"><!-- injected --></div>
+      <button class="btn-secondary" id="user-picker-close" hidden>Hætta við</button>
+    </div>
+  </div>
 
   <!-- MAIN VIEWS -->
   <main id="views">
@@ -130,7 +147,14 @@
       </div>
 
       <div class="settings-block">
+        <h3>Notandi þessa tækis</h3>
+        <p class="settings-hint">Þetta stýrir hvaða verkefni <em>þú</em> sérð í þessu tæki — hvert tæki man sinn eigin notanda, óháð Firebase-samstillingu.</p>
+        <button class="btn-secondary" id="btn-switch-user">Skipta um notanda</button>
+      </div>
+
+      <div class="settings-block">
         <h3>Notendur / skammstafanir</h3>
+        <p class="settings-hint">Hakaðu við "Admin" fyrir þá sem mega sjá <strong>öll</strong> verkefni, ekki bara sín eigin.</p>
         <div id="user-list" class="user-list"><!-- injected --></div>
         <form id="user-form" class="inline-form">
           <input type="text" id="u-name" placeholder="Nafn (t.d. Jón Bjartur)" required>

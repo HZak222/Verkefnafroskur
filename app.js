@@ -13,7 +13,6 @@ const firebaseConfig = {
   projectId: "verkefnalisti-frosks",
 };
 
-
 /* ===================================================================== */
 
 const PRIORITIES = [
@@ -24,7 +23,7 @@ const PRIORITIES = [
 ];
 
 const TIERS = [
-  { min: 0, name: "Halakvísill", emoji: "🐣" },
+  { min: 0, name: "Halakarta", emoji: "🐣" },
   { min: 5, name: "Ungfroskur", emoji: "🐸" },
   { min: 15, name: "Froskur", emoji: "🐸" },
   { min: 30, name: "Risafroskur", emoji: "🐸" },
@@ -53,16 +52,32 @@ function defaultState() {
     tasks: [],
     archive: [],
     users: [
-      { name: "Liljan", code: "LD" },
-      { name: "Jón Bjartur", code: "JBA" },
-      { name: "Bjartmar", code: "BA" },
-      { name: "Froskur", code: "AMJ" },
+      { name: "Liljan", code: "LD", admin: false },
+      { name: "Jón Bjartur", code: "JBA", admin: false },
+      { name: "Bjartmar", code: "BA", admin: false },
+      { name: "Froskur", code: "AMJ", admin: true },
     ],
     meta: { streak: 0, bestStreak: 0, lastCompletedDate: null, totalCompleted: 0, lastAssignee: "" },
   };
 }
 
+const LOCAL_PREFS_KEY = "froskurinn_local_prefs_v1";
+const AVATAR_COLORS = ["#E8503A", "#F0B429", "#52B788", "#5B8DEF", "#B085F5", "#F07AA5"];
+
+function loadLocalPrefs() {
+  try {
+    const raw = localStorage.getItem(LOCAL_PREFS_KEY);
+    return raw ? JSON.parse(raw) : { currentUser: null, viewAll: false };
+  } catch (e) {
+    return { currentUser: null, viewAll: false };
+  }
+}
+function saveLocalPrefs() {
+  localStorage.setItem(LOCAL_PREFS_KEY, JSON.stringify(local));
+}
+
 let state = loadLocal() || defaultState();
+let local = loadLocalPrefs();
 let currentPriority = null;
 let firebaseActive = false;
 let fbRootRef = null;
@@ -113,7 +128,13 @@ function maybeInitFirebase() {
             suppressFirebaseEcho = true;
             state = Object.assign(defaultState(), val);
             saveLocal();
+            if (local.currentUser && !findUser(local.currentUser)) {
+              local.currentUser = null;
+              saveLocalPrefs();
+            }
             renderAll();
+            updateUserChip();
+            if (!local.currentUser) openUserPicker(false);
             suppressFirebaseEcho = false;
           } else {
             fbRootRef.set(state);
@@ -162,6 +183,73 @@ function bumpStreakOnComplete() {
 function $(sel) { return document.querySelector(sel); }
 function $all(sel) { return Array.from(document.querySelectorAll(sel)); }
 
+/* ---------------------- Notandaskipting (per-device) ---------------------- */
+function findUser(name) {
+  return state.users.find((u) => u.name === name) || null;
+}
+function currentUserIsAdmin() {
+  const u = findUser(local.currentUser);
+  return !!(u && u.admin);
+}
+function taskVisible(t) {
+  if (currentUserIsAdmin() && local.viewAll) return true;
+  return t.assignee === local.currentUser;
+}
+
+function updateUserChip() {
+  const nameEl = $("#user-chip-name");
+  const switchLabel = $("#viewall-switch");
+  const checkbox = $("#viewall-checkbox");
+  nameEl.textContent = local.currentUser || "Velja notanda";
+  if (currentUserIsAdmin()) {
+    switchLabel.hidden = false;
+    checkbox.checked = !!local.viewAll;
+  } else {
+    switchLabel.hidden = true;
+    local.viewAll = false;
+  }
+}
+
+function renderUserPicker() {
+  const wrap = $("#user-picker-list");
+  wrap.innerHTML = "";
+  state.users.forEach((u, i) => {
+    const b = document.createElement("button");
+    b.className = "user-picker-option";
+    b.style.background = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    b.innerHTML = `<span class="avatar">${escapeHtml(u.code)}</span> ${escapeHtml(u.name)}`;
+    b.addEventListener("click", () => selectUser(u.name));
+    wrap.appendChild(b);
+  });
+}
+
+function openUserPicker(closable) {
+  renderUserPicker();
+  $("#user-picker-close").hidden = !closable;
+  $("#user-picker").hidden = false;
+}
+
+function selectUser(name) {
+  local.currentUser = name;
+  saveLocalPrefs();
+  $("#user-picker").hidden = true;
+  updateUserChip();
+  renderHome();
+  if (!$("#view-list").hidden) renderTaskList();
+  if (!$("#view-stats").hidden) renderStats();
+  renderAssigneeOptions();
+}
+
+$("#user-chip-btn").addEventListener("click", () => openUserPicker(true));
+$("#btn-switch-user").addEventListener("click", () => openUserPicker(true));
+$("#user-picker-close").addEventListener("click", () => { $("#user-picker").hidden = true; });
+$("#viewall-checkbox").addEventListener("change", (e) => {
+  local.viewAll = e.target.checked;
+  saveLocalPrefs();
+  renderHome();
+  if (!$("#view-list").hidden) renderTaskList();
+});
+
 function renderHeader() {
   const tier = currentTier();
   $("#tier-badge").textContent = `${tier.emoji} ${tier.name}`;
@@ -176,8 +264,9 @@ function setQuip(text) {
 function renderHome() {
   const grid = $("#priority-grid");
   grid.innerHTML = "";
+  const myTasks = state.tasks.filter(taskVisible);
   PRIORITIES.forEach((p) => {
-    const count = state.tasks.filter((t) => t.priority === p.key).length;
+    const count = myTasks.filter((t) => t.priority === p.key).length;
     const btn = document.createElement("button");
     btn.className = `priority-block p-${p.key}`;
     btn.innerHTML = `
@@ -190,9 +279,9 @@ function renderHome() {
     grid.appendChild(btn);
   });
 
-  // Fagnaðarmynd þegar engin verkefni eru eftir
+  // Fagnaðarmynd þegar engin verkefni eru eftir (innan þess sem þessi notandi sér)
   const celebrationEl = $("#celebration");
-  const noTasksLeft = state.tasks.length === 0;
+  const noTasksLeft = myTasks.length === 0;
   celebrationEl.hidden = !noTasksLeft;
   const celebrationVideo = celebrationEl.querySelector("video");
   if (celebrationVideo) {
@@ -203,7 +292,7 @@ function renderHome() {
   // Verkefni með deadline í dag eða liðinn, óháð forgangi
   const dueAlert = $("#due-alert");
   const dueList = $("#due-list");
-  const dueTasks = state.tasks
+  const dueTasks = myTasks
     .filter((t) => t.deadline && daysUntil(t.deadline) <= 0)
     .sort((a, b) => a.deadline.localeCompare(b.deadline));
   dueList.innerHTML = "";
@@ -234,7 +323,7 @@ function daysUntil(dateStr) {
 function renderTaskList() {
   const list = $("#task-list");
   const tasks = state.tasks
-    .filter((t) => t.priority === currentPriority)
+    .filter((t) => t.priority === currentPriority && taskVisible(t))
     .sort((a, b) => (a.deadline || "9999").localeCompare(b.deadline || "9999"));
   list.innerHTML = "";
   $("#list-empty").hidden = tasks.length > 0;
@@ -351,8 +440,10 @@ function renderAssigneeOptions() {
   const sel = $("#f-assignee");
   sel.innerHTML = `<option value="">— ekki valið —</option>` +
     state.users.map((u) => `<option value="${escapeHtml(u.name)}">${escapeHtml(u.name)} (${escapeHtml(u.code)})</option>`).join("");
-  // Sjálfgefið á síðasta notanda sem var valinn, til að flýta fyrir næstu skráningu
-  if (state.meta.lastAssignee && state.users.some((u) => u.name === state.meta.lastAssignee)) {
+  // Sjálfgefið á þig sjálfan (notanda þessa tækis), annars á síðasta valda notanda
+  if (local.currentUser && state.users.some((u) => u.name === local.currentUser)) {
+    sel.value = local.currentUser;
+  } else if (state.meta.lastAssignee && state.users.some((u) => u.name === state.meta.lastAssignee)) {
     sel.value = state.meta.lastAssignee;
   }
 }
@@ -449,9 +540,10 @@ function renderStats() {
   `;
 
   const archList = $("#archive-list");
-  $("#archive-empty").hidden = state.archive.length > 0;
+  const visibleArchive = state.archive.filter(taskVisible);
+  $("#archive-empty").hidden = visibleArchive.length > 0;
   archList.innerHTML = "";
-  state.archive.slice(0, 40).forEach((t) => {
+  visibleArchive.slice(0, 40).forEach((t) => {
     const card = document.createElement("div");
     card.className = `task-card pri-${t.priority}`;
     card.style.opacity = ".8";
@@ -486,14 +578,27 @@ function renderUsers() {
   state.users.forEach((u, i) => {
     const row = document.createElement("div");
     row.className = "user-row";
-    row.innerHTML = `<span>${escapeHtml(u.name)} <span class="u-code">${escapeHtml(u.code)}</span></span><button class="user-del" aria-label="Fjarlægja ${escapeHtml(u.name)}">✕</button>`;
-    row.querySelector("button").addEventListener("click", () => {
+    row.innerHTML = `
+      <span>${escapeHtml(u.name)} <span class="u-code">${escapeHtml(u.code)}</span></span>
+      <label class="admin-toggle">
+        <input type="checkbox" ${u.admin ? "checked" : ""}> Admin
+      </label>
+      <button class="user-del" aria-label="Fjarlægja ${escapeHtml(u.name)}">✕</button>
+    `;
+    row.querySelector(".admin-toggle input").addEventListener("change", (e) => {
+      u.admin = e.target.checked;
+      persist();
+      updateUserChip();
+    });
+    row.querySelector(".user-del").addEventListener("click", () => {
       if (!confirm(`Fjarlægja ${u.name} (${u.code}) úr notendalistanum?`)) return;
       state.users.splice(i, 1);
       if (state.meta.lastAssignee === u.name) state.meta.lastAssignee = "";
+      if (local.currentUser === u.name) { local.currentUser = null; saveLocalPrefs(); }
       persist();
       renderUsers();
       renderAssigneeOptions();
+      updateUserChip();
     });
     wrap.appendChild(row);
   });
@@ -584,10 +689,18 @@ function renderAll() {
 }
 
 function init() {
+  // Ef vistaði notandinn er farinn úr listanum (t.d. eytt í Settings), byrjum upp á nýtt
+  if (local.currentUser && !findUser(local.currentUser)) {
+    local.currentUser = null;
+    saveLocalPrefs();
+  }
   renderAll();
+  updateUserChip();
   setQuip();
   switchView("home");
   maybeInitFirebase();
+
+  if (!local.currentUser) openUserPicker(false);
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW villa:", e));

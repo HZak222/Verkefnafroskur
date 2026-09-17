@@ -97,6 +97,90 @@ input, select { font: inherit; }
   color: var(--frog-green);
   font-weight: 700;
 }
+.user-chip-row {
+  margin: 10px 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.user-chip {
+  background: var(--surface);
+  border: none;
+  color: var(--cream);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.viewall-switch {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--dim);
+}
+.viewall-switch input {
+  appearance: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  position: relative;
+  cursor: pointer;
+}
+.viewall-switch input::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--dim);
+  transition: transform .15s ease, background .15s ease;
+}
+.viewall-switch input:checked { background: var(--frog-green); }
+.viewall-switch input:checked::after { transform: translateX(16px); background: var(--pond-deep); }
+
+/* ---------------------- USER PICKER OVERLAY ---------------------- */
+.user-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--pond-deep);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.user-picker-card {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+.user-picker-card h2 { font-size: 22px; margin-bottom: 6px; }
+.user-picker-hint { color: var(--dim); font-size: 14px; margin-bottom: 20px; }
+.user-picker-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.user-picker-option {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: "Baloo 2", sans-serif;
+  color: var(--pond-deep);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+.user-picker-option .avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
 
 /* ---------- MAIN / VIEWS ---------- */
 main#views {
@@ -305,8 +389,9 @@ main#views {
 .settings-hint { font-size: 13px; color: var(--dim); line-height: 1.5; }
 .firebase-status { font-size: 12.5px; color: var(--p-yellow); margin-top: 8px; }
 .user-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
-.user-row { display: flex; align-items: center; justify-content: space-between; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; }
+.user-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface-2); border-radius: var(--radius-sm); padding: 10px 12px; }
 .user-row .u-code { background: var(--pond-deep); padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+.admin-toggle { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--dim); flex: 0 0 auto; }
 .user-del {
   width: 30px; height: 30px;
   border: none;
