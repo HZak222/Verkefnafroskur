@@ -7,10 +7,10 @@
    geymslu (localStorage) í þessu tæki — virkar fínt eitt og sér.
 ===================================================================== */
 const firebaseConfig = {
-  apiKey: "AIzaSyDY5nHkS0kmdkXdBs1Q5bTgl7Rg8bjvj3E",
-  authDomain: "verkefnalisti-frosks.firebaseapp.com",
-  databaseURL: "https://verkefnalisti-frosks-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "verkefnalisti-frosks",
+  apiKey: "REPLACE_ME",
+  authDomain: "REPLACE_ME.firebaseapp.com",
+  databaseURL: "https://REPLACE_ME.firebaseio.com",
+  projectId: "REPLACE_ME",
 };
 
 /* ===================================================================== */
@@ -23,7 +23,7 @@ const PRIORITIES = [
 ];
 
 const TIERS = [
-  { min: 0, name: "Halakarta", emoji: "🐣" },
+  { min: 0, name: "Halakvísill", emoji: "🐣" },
   { min: 5, name: "Ungfroskur", emoji: "🐸" },
   { min: 15, name: "Froskur", emoji: "🐸" },
   { min: 30, name: "Risafroskur", emoji: "🐸" },
@@ -57,7 +57,7 @@ function defaultState() {
       { name: "Bjartmar", code: "BA", admin: false },
       { name: "Froskur", code: "AMJ", admin: true },
     ],
-    meta: { streak: 0, bestStreak: 0, lastCompletedDate: null, totalCompleted: 0, lastAssignee: "" },
+    meta: { lastAssignee: "", perUser: {} },
   };
 }
 
@@ -155,28 +155,67 @@ function setFirebaseStatusText(t) {
   if (el) el.textContent = t;
 }
 
-/* ---------------------- Gamification ---------------------- */
-function currentTier() {
+/* ---------------------- Gamification (per notanda) ---------------------- */
+// Tölfræði er geymd per notanda (state.meta.perUser[nafn]), ekki sem ein sameiginleg tala,
+// svo hver sjái sína eigin framvindu — ekki tölur sem innihalda verkefni annarra.
+function getUserMeta(name) {
+  if (!state.meta.perUser) state.meta.perUser = {};
+  if (!name) return { totalCompleted: 0, streak: 0, bestStreak: 0, lastCompletedDate: null };
+  if (!state.meta.perUser[name]) {
+    state.meta.perUser[name] = { totalCompleted: 0, streak: 0, bestStreak: 0, lastCompletedDate: null };
+  }
+  return state.meta.perUser[name];
+}
+
+function bumpStreakOnComplete(name) {
+  if (!name) return;
+  const m = getUserMeta(name);
+  const today = new Date().toDateString();
+  if (m.lastCompletedDate === today) {
+    // þegar talið í dag
+  } else if (m.lastCompletedDate === new Date(Date.now() - 86400000).toDateString()) {
+    m.streak += 1;
+  } else {
+    m.streak = 1;
+  }
+  m.lastCompletedDate = today;
+  m.bestStreak = Math.max(m.bestStreak, m.streak);
+  m.totalCompleted += 1;
+}
+
+function tierFor(totalCompleted) {
   let t = TIERS[0];
-  for (const tier of TIERS) if (state.meta.totalCompleted >= tier.min) t = tier;
+  for (const tier of TIERS) if (totalCompleted >= tier.min) t = tier;
   return t;
 }
-function nextTier() {
-  const idx = TIERS.indexOf(currentTier());
+function nextTierFor(totalCompleted) {
+  const idx = TIERS.indexOf(tierFor(totalCompleted));
   return TIERS[idx + 1] || null;
 }
-function bumpStreakOnComplete() {
-  const today = new Date().toDateString();
-  if (state.meta.lastCompletedDate === today) {
-    // already counted today
-  } else if (state.meta.lastCompletedDate === new Date(Date.now() - 86400000).toDateString()) {
-    state.meta.streak += 1;
-  } else {
-    state.meta.streak = 1;
+function tierProgressPctFor(totalCompleted) {
+  const tier = tierFor(totalCompleted);
+  const next = nextTierFor(totalCompleted);
+  if (!next) return 100;
+  const span = next.min - tier.min;
+  const done = totalCompleted - tier.min;
+  return Math.max(4, Math.min(100, Math.round((done / span) * 100)));
+}
+
+// Tölfræðin sem á að birtast núna: annaðhvort persónuleg (þessi notandi), eða liðsheild
+// (admin með "Sýna öll verkefni" á).
+function activeStatsScope() {
+  if (currentUserIsAdmin() && local.viewAll) {
+    const names = state.users.map((u) => u.name);
+    const metas = names.map((n) => getUserMeta(n));
+    return {
+      isTeam: true,
+      totalCompleted: metas.reduce((s, m) => s + m.totalCompleted, 0),
+      streak: Math.max(0, ...metas.map((m) => m.streak)),
+      bestStreak: Math.max(0, ...metas.map((m) => m.bestStreak)),
+    };
   }
-  state.meta.lastCompletedDate = today;
-  state.meta.bestStreak = Math.max(state.meta.bestStreak, state.meta.streak);
-  state.meta.totalCompleted += 1;
+  const m = getUserMeta(local.currentUser);
+  return { isTeam: false, totalCompleted: m.totalCompleted, streak: m.streak, bestStreak: m.bestStreak };
 }
 
 /* ---------------------- Rendering ---------------------- */
@@ -251,10 +290,11 @@ $("#viewall-checkbox").addEventListener("change", (e) => {
 });
 
 function renderHeader() {
-  const tier = currentTier();
+  const scope = activeStatsScope();
+  const tier = tierFor(scope.totalCompleted);
   $("#tier-badge").textContent = `${tier.emoji} ${tier.name}`;
   $("#streak-line").textContent =
-    state.meta.streak > 0 ? `${state.meta.streak} daga runa 🔥` : "byrjaðu rununa í dag";
+    scope.streak > 0 ? `${scope.streak} daga runa 🔥` : "byrjaðu rununa í dag";
 }
 
 function setQuip(text) {
@@ -389,13 +429,20 @@ function completeTask(id) {
   const [task] = state.tasks.splice(idx, 1);
   task.completedAt = new Date().toISOString();
   state.archive.unshift(task);
-  bumpStreakOnComplete();
+  const creditedUser = task.assignee || local.currentUser;
+  bumpStreakOnComplete(creditedUser);
   persist();
   renderTaskList();
   renderHome();
   renderHeader();
   fireConfetti();
-  showToast(`Klárað! ${currentTier().emoji} ${currentTier().name}`);
+  if (creditedUser) {
+    const m = getUserMeta(creditedUser);
+    const tier = tierFor(m.totalCompleted);
+    showToast(`Klárað! ${tier.emoji} ${tier.name}`);
+  } else {
+    showToast("Klárað! 🐸");
+  }
   setQuip(pickCelebrationQuip());
 }
 
@@ -542,18 +589,21 @@ $("#task-form").addEventListener("submit", (e) => {
 
 /* ---------------------- Stats ---------------------- */
 function renderStats() {
-  const totalHoursDone = state.archive.reduce((s, t) => s + (t.hours || 0), 0);
-  const tier = currentTier();
-  const next = nextTier();
+  const scope = activeStatsScope();
+  const totalHoursDone = state.archive.filter(taskVisible).reduce((s, t) => s + (t.hours || 0), 0);
+  const tier = tierFor(scope.totalCompleted);
+  const next = nextTierFor(scope.totalCompleted);
   const grid = $("#stats-grid");
+  const completedLabel = scope.isTeam ? "Kláruð verkefni (öll)" : "Kláruð verkefni";
+  const streakLabel = scope.isTeam ? "Besta virka runa" : "Daga runa núna";
   grid.innerHTML = `
-    <div class="stat-card"><div class="stat-num">${state.meta.totalCompleted}</div><div class="stat-label">Kláruð verkefni</div></div>
-    <div class="stat-card"><div class="stat-num">${state.meta.streak}</div><div class="stat-label">Daga runa núna</div></div>
-    <div class="stat-card"><div class="stat-num">${state.meta.bestStreak}</div><div class="stat-label">Besta runa</div></div>
+    <div class="stat-card"><div class="stat-num">${scope.totalCompleted}</div><div class="stat-label">${completedLabel}</div></div>
+    <div class="stat-card"><div class="stat-num">${scope.streak}</div><div class="stat-label">${streakLabel}</div></div>
+    <div class="stat-card"><div class="stat-num">${scope.bestStreak}</div><div class="stat-label">Besta runa</div></div>
     <div class="stat-card"><div class="stat-num">${totalHoursDone}</div><div class="stat-label">Klst. lokið</div></div>
     <div class="tier-progress">
-      <div>${tier.emoji} <strong>${tier.name}</strong>${next ? ` → næst: ${next.emoji} ${next.name} (${next.min - state.meta.totalCompleted} eftir)` : " — hæsta stig náð!"}</div>
-      <div class="tier-progress-bar"><div class="tier-progress-fill" style="width:${tierProgressPct()}%"></div></div>
+      <div>${tier.emoji} <strong>${tier.name}</strong>${next ? ` → næst: ${next.emoji} ${next.name} (${next.min - scope.totalCompleted} eftir)` : " — hæsta stig náð!"}</div>
+      <div class="tier-progress-bar"><div class="tier-progress-fill" style="width:${tierProgressPctFor(scope.totalCompleted)}%"></div></div>
     </div>
   `;
 
@@ -602,15 +652,6 @@ function renderStats() {
     card.querySelector(".task-del").addEventListener("click", () => restoreTask(t.id));
     archList.appendChild(card);
   });
-}
-
-function tierProgressPct() {
-  const tier = currentTier();
-  const next = nextTier();
-  if (!next) return 100;
-  const span = next.min - tier.min;
-  const done = state.meta.totalCompleted - tier.min;
-  return Math.max(4, Math.min(100, Math.round((done / span) * 100)));
 }
 
 /* ---------------------- Settings ---------------------- */
