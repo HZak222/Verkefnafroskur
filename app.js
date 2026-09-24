@@ -330,6 +330,19 @@ function renderTaskList() {
   tasks.forEach((t) => list.appendChild(makeTaskCardEl(t)));
 }
 
+function googleCalendarUrl(t) {
+  if (!t.deadline) return null;
+  const start = t.deadline.replace(/-/g, "");
+  const endDateObj = new Date(t.deadline + "T00:00:00");
+  endDateObj.setDate(endDateObj.getDate() + 1);
+  const end = endDateObj.toISOString().slice(0, 10).replace(/-/g, "");
+  const text = encodeURIComponent(t.title);
+  const detailsParts = ["Verkefni úr Froskurinn appinu"];
+  if (t.assignee) detailsParts.push(t.assignee);
+  const details = encodeURIComponent(detailsParts.join(" — "));
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}`;
+}
+
 function makeTaskCardEl(t) {
   const card = document.createElement("div");
   card.className = `task-card pri-${t.priority}`;
@@ -339,6 +352,7 @@ function makeTaskCardEl(t) {
     const label = du < 0 ? `${Math.abs(du)}d sein` : du === 0 ? "í dag" : `${du}d eftir`;
     dueChip = `<span class="chip ${du !== null && du <= 0 ? "due-soon" : ""}">${label}</span>`;
   }
+  const calUrl = googleCalendarUrl(t);
   card.innerHTML = `
     <button class="task-check" aria-label="Klára verkefni">
       <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -351,10 +365,14 @@ function makeTaskCardEl(t) {
         ${dueChip}
       </div>
     </div>
+    ${calUrl ? `<button class="task-cal" aria-label="Setja á dagatal">📅</button>` : ""}
     <button class="task-edit" aria-label="Breyta verkefni">✎</button>
     <button class="task-del" aria-label="Eyða">✕</button>
   `;
   card.querySelector(".task-check").addEventListener("click", () => completeTask(t.id));
+  if (calUrl) {
+    card.querySelector(".task-cal").addEventListener("click", () => window.open(calUrl, "_blank"));
+  }
   card.querySelector(".task-edit").addEventListener("click", () => openEditTask(t));
   card.querySelector(".task-del").addEventListener("click", () => deleteTask(t.id));
   return card;
@@ -538,6 +556,30 @@ function renderStats() {
       <div class="tier-progress-bar"><div class="tier-progress-fill" style="width:${tierProgressPct()}%"></div></div>
     </div>
   `;
+
+  const userStatsBlock = $("#user-stats-block");
+  userStatsBlock.hidden = !currentUserIsAdmin();
+  if (currentUserIsAdmin()) {
+    const counts = state.users.map((u) => ({
+      name: u.name,
+      count: state.archive.filter((t) => t.assignee === u.name).length,
+    }));
+    const unassigned = state.archive.filter((t) => !t.assignee).length;
+    if (unassigned > 0) counts.push({ name: "Ekki úthlutað", count: unassigned });
+    const maxCount = Math.max(1, ...counts.map((c) => c.count));
+    const wrap = $("#user-stats-list");
+    wrap.innerHTML = counts
+      .sort((a, b) => b.count - a.count)
+      .map(
+        (c) => `
+        <div class="user-stat-row">
+          <span class="usr-name">${escapeHtml(c.name)}</span>
+          <span class="bar-track"><span class="bar-fill" style="width:${(c.count / maxCount) * 100}%"></span></span>
+          <span class="usr-count">${c.count}</span>
+        </div>`
+      )
+      .join("");
+  }
 
   const archList = $("#archive-list");
   const visibleArchive = state.archive.filter(taskVisible);
